@@ -42,7 +42,7 @@ sounddevice = "^0.4.7"
 numpy = "^2.0.0"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.4.10"
+ruff = "^0.5.0"
 pre-commit = "^3.7.1"
 commitizen = "^3.27.0"
 babel = "^2.15.0"

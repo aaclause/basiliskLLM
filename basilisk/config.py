@@ -69,6 +69,7 @@ class GeneralSettings(BaseModel):
 		default=ReleaseChannelEnum.STABLE
 	)
 	last_update_check: datetime | None = Field(default=None)
+	quit_on_close: bool = Field(default=False)
 
 
 class ImagesSettings(BaseModel):

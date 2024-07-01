@@ -97,6 +97,12 @@ class PreferencesDialog(wx.Dialog):
 		)
 		sizer.Add(self.language, 0, wx.ALL, 5)
 
+		self.quit_on_close = wx.CheckBox(
+			panel, label=_("Quit on &close, don't minimize")
+		)
+		self.quit_on_close.SetValue(conf.general.quit_on_close)
+		sizer.Add(self.quit_on_close, 0, wx.ALL, 5)
+
 		update_group = wx.StaticBox(panel, label=_("Update"))
 		update_group_sizer = wx.StaticBoxSizer(update_group, wx.VERTICAL)
 
@@ -247,6 +253,7 @@ class PreferencesDialog(wx.Dialog):
 		conf.general.language = list(self.languages.keys())[
 			self.language.GetSelection()
 		]
+		conf.general.quit_on_close = self.quit_on_close.GetValue()
 		conf.general.release_channel = list(release_channels.keys())[
 			self.release_channel.GetSelection()
 		]

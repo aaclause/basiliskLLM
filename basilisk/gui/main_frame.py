@@ -180,7 +180,7 @@ class MainFrame(wx.Frame):
 		self.Maximize(True)
 
 	def init_accelerators(self):
-		self.Bind(wx.EVT_CLOSE, self.on_minimize)
+		self.Bind(wx.EVT_CLOSE, self.on_close)
 		self.Bind(
 			wx.EVT_MENU, self.on_new_conversation, id=self.ID_NEW_CONVERSATION
 		)
@@ -325,6 +325,12 @@ class MainFrame(wx.Frame):
 		log.debug("Restored from tray")
 		self.Show(True)
 		self.Raise()
+
+	def on_close(self, event):
+		if config.conf.general.quit_on_close:
+			self.on_quit(event)
+		else:
+			self.on_minimize(event)
 
 	def on_quit(self, event):
 		log.info("Closing application")

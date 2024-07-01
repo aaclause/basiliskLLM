@@ -59,7 +59,7 @@ repos:
         additional_dependencies:
           - "mdformat-gfm"
 -   repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: "v0.4.10"
+    rev: "v0.5.0"
     hooks:
       - id: ruff-format
       - id: ruff

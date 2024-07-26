@@ -44,6 +44,13 @@ class FloatSpinTextCtrlAccessible(wx.Accessible):
 
 
 class ConversationTab(wx.Panel):
+	ROLE_LABELS: dict[MessageRoleEnum, str] = {
+		# Translators: Label indicating that the message is from the user in a conversation
+		MessageRoleEnum.USER: _("User:"),
+		# Translators: Label indicating that the message is from the assistant in a conversation
+		MessageRoleEnum.ASSISTANT: _("Assistant:"),
+	}
+
 	def __init__(self, parent: wx.Window):
 		wx.Panel.__init__(self, parent)
 		self.SetStatusText = parent.GetParent().GetParent().SetStatusText
@@ -653,14 +660,15 @@ class ConversationTab(wx.Panel):
 	def display_new_block(self, new_block: MessageBlock):
 		if not self.messages.IsEmpty():
 			self.messages.AppendText(os.linesep)
+		role_label = self.ROLE_LABELS[new_block.request.role]
 		content = self.extract_text_from_message(new_block.request.content)
-		self.messages.AppendText(f"{new_block.request.role.value}: {content}")
+		self.messages.AppendText(f"{role_label} {content}")
 		self.messages.AppendText(os.linesep)
 		pos = self.messages.GetInsertionPoint()
 		if new_block.response:
-			self.messages.AppendText(
-				f"{new_block.response.role.value}: {new_block.response.content}"
-			)
+			role_label = self.ROLE_LABELS[new_block.response.role]
+			content = self.extract_text_from_message(new_block.response.content)
+			self.messages.AppendText(f"{role_label} {content}")
 			if new_block.response.content:
 				self.messages.AppendText(os.linesep)
 		self.messages.SetInsertionPoint(pos)

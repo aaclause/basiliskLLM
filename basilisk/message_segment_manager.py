@@ -1,9 +1,6 @@
-import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import List, Optional
-
-log = logging.getLogger(__name__)
 
 
 class MessageSegmentType(Enum):
@@ -19,18 +16,19 @@ class MessageSegment:
 
 
 class MessageSegmentManager:
-	positions: List[MessageSegment] = field(default_factory=list)
-	_current_index: int = -1
-	_absolute_position: int = -1
-
-	def __init__(self, positions: List[MessageSegment] = []):
-		self.positions = positions
-		self._current_index = -1
-		self._absolute_position = -1
-		if positions:
+	def __init__(self, positions: Optional[List[MessageSegment]] = None):
+		self.segments: List[MessageSegment] = (
+			positions if positions is not None else []
+		)
+		self._current_index: int = -1
+		self._absolute_position: int = -1
+		if self.segments:
 			self.position = 0
+			self._absolute_position = 0
 
-	def previous(self, message_position_type: Optional[str] = None) -> int:
+	def previous(
+		self, message_position_type: Optional[MessageSegmentType] = None
+	) -> int:
 		"""Move to the previous position"""
 		if self._current_index <= 0:
 			raise IndexError("Cannot move to previous position")
@@ -38,7 +36,7 @@ class MessageSegmentManager:
 		if message_position_type is not None:
 			while (
 				current_position >= 0
-				and self.positions[current_position].kind
+				and self.segments[current_position].kind
 				!= message_position_type
 			):
 				current_position -= 1
@@ -48,27 +46,29 @@ class MessageSegmentManager:
 		self.position = current_position
 		return self.absolute_position
 
-	def next(self, message_position_type: Optional[str] = None) -> int:
+	def next(
+		self, message_position_type: Optional[MessageSegmentType] = None
+	) -> int:
 		"""Move to the next position"""
-		if self._current_index >= len(self.positions) - 1:
+		if self._current_index >= len(self.segments) - 1:
 			raise IndexError("Cannot move to next position")
 		current_position = self._current_index + 1
 		if message_position_type is not None:
 			while (
-				current_position < len(self.positions)
-				and self.positions[current_position].kind
+				current_position < len(self.segments)
+				and self.segments[current_position].kind
 				!= message_position_type
 			):
 				current_position += 1
 
-		if current_position >= len(self.positions):
+		if current_position >= len(self.segments):
 			raise IndexError("Cannot move to next position")
 		self.position = current_position
 		return self.absolute_position
 
 	@property
-	def message_position(self) -> MessageSegment:
-		return self.positions[self._current_index]
+	def current_segment(self) -> MessageSegment:
+		return self.segments[self._current_index]
 
 	@property
 	def position(self) -> int:
@@ -76,7 +76,7 @@ class MessageSegmentManager:
 
 	@position.setter
 	def position(self, value: int):
-		if value < 0 or value >= len(self.positions):
+		if value < 0 or value >= len(self.segments):
 			raise ValueError("Invalid current index")
 		self._current_index = value
 		self._refresh_absolute_position()
@@ -91,60 +91,69 @@ class MessageSegmentManager:
 		if absolute_position < 0:
 			raise ValueError("Invalid absolute position")
 		length_sum = 0
-		for index, segment in enumerate(self.positions):
+		for index, segment in enumerate(self.segments):
 			length_sum += segment.length
 			if length_sum > absolute_position:
-				self.position = index - 1
+				self.position = index
+				self._refresh_absolute_position()
 				return
-		self.position = len(self.positions) - 1
+		self.position = len(self.segments) - 1
+		self._refresh_absolute_position()
+
+	@property
+	def start(self) -> int:
+		"""Get the start position of the current index"""
+		return self.absolute_position - self.current_segment.length
+
+	@property
+	def end(self) -> int:
+		"""Get the end position of the current index"""
+		return self.absolute_position
 
 	def insert(self, index: int, value: MessageSegment):
-		self.positions.insert(index, value)
+		self.segments.insert(index, value)
 		self._refresh_absolute_position()
 
 	def append(self, value: MessageSegment):
-		self.positions.append(value)
-		log.debug(f"Positions: {self.positions}")
+		self.segments.append(value)
 		self._refresh_absolute_position()
 
 	def remove(self, value: MessageSegment):
-		self.positions.remove(value)
+		self.segments.remove(value)
 		self._refresh_absolute_position()
 
 	def index(self, value: MessageSegment) -> int:
-		return self.positions.index(value)
+		return self.segments.index(value)
 
 	def _refresh_absolute_position(self):
 		"""Refresh the absolute position based on the current index"""
-		if not self.positions:
-			self._absolute_position = -1
-		else:
-			self._absolute_position = 0
-			for position in self.positions[: self._current_index + 1]:
-				self._absolute_position += position.length
-		log.debug(f"New absolute position: {self._absolute_position}")
+		self._absolute_position = 0
+		for position in self.segments[: self._current_index]:
+			self._absolute_position += position.length
+		if self._current_index >= 0:
+			self._absolute_position += self.segments[self._current_index].length
 
 	def __len__(self) -> int:
-		return len(self.positions)
+		return len(self.segments)
 
 	def __str__(self) -> str:
 		return (
-			f"MessageBlockPosition({self._current_index}/{len(self.positions)})"
+			f"MessageBlockPosition({self._current_index}/{len(self.segments)})"
 		)
 
 	def __repr__(self) -> str:
 		return self.__str__()
 
 	def __iter__(self):
-		return iter(self.positions)
+		return iter(self.segments)
 
 	def __getitem__(self, index: int) -> MessageSegment:
-		return self.positions[index]
+		return self.segments[index]
 
 	def __setitem__(self, index: int, value: MessageSegment):
-		self.positions[index] = value
+		self.segments[index] = value
 		self._refresh_absolute_position()
 
 	def __delitem__(self, index: int):
-		del self.positions[index]
+		del self.segments[index]
 		self._refresh_absolute_position()

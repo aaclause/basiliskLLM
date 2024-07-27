@@ -6,24 +6,24 @@ from typing import List, Optional
 log = logging.getLogger(__name__)
 
 
-class MessagePositionType(Enum):
+class MessageSegmentType(Enum):
 	PREFIX = "prefix"
 	CONTENT = "content"
 	SUFFIX = "suffix"
 
 
 @dataclass
-class MessagePosition:
-	relative_position: int
-	kind: MessagePositionType
+class MessageSegment:
+	length: int
+	kind: MessageSegmentType
 
 
-class MessagePositionManager:
-	positions: List[MessagePosition] = field(default_factory=list)
+class MessageSegmentManager:
+	positions: List[MessageSegment] = field(default_factory=list)
 	_current_index: int = -1
 	_absolute_position: int = -1
 
-	def __init__(self, positions: List[MessagePosition] = []):
+	def __init__(self, positions: List[MessageSegment] = []):
 		self.positions = positions
 		self._current_index = -1
 		self._absolute_position = -1
@@ -67,7 +67,7 @@ class MessagePositionManager:
 		return self.absolute_position
 
 	@property
-	def message_position(self) -> MessagePosition:
+	def message_position(self) -> MessageSegment:
 		return self.positions[self._current_index]
 
 	@property
@@ -90,28 +90,28 @@ class MessagePositionManager:
 	def absolute_position(self, absolute_position: int):
 		if absolute_position < 0:
 			raise ValueError("Invalid absolute position")
-		relative_position_sum = 0
-		for index, position in enumerate(self.positions):
-			relative_position_sum += position.relative_position
-			if relative_position_sum > absolute_position:
+		length_sum = 0
+		for index, segment in enumerate(self.positions):
+			length_sum += segment.length
+			if length_sum > absolute_position:
 				self.position = index - 1
 				return
 		self.position = len(self.positions) - 1
 
-	def insert(self, index: int, value: MessagePosition):
+	def insert(self, index: int, value: MessageSegment):
 		self.positions.insert(index, value)
 		self._refresh_absolute_position()
 
-	def append(self, value: MessagePosition):
+	def append(self, value: MessageSegment):
 		self.positions.append(value)
 		log.debug(f"Positions: {self.positions}")
 		self._refresh_absolute_position()
 
-	def remove(self, value: MessagePosition):
+	def remove(self, value: MessageSegment):
 		self.positions.remove(value)
 		self._refresh_absolute_position()
 
-	def index(self, value: MessagePosition) -> int:
+	def index(self, value: MessageSegment) -> int:
 		return self.positions.index(value)
 
 	def _refresh_absolute_position(self):
@@ -121,7 +121,7 @@ class MessagePositionManager:
 		else:
 			self._absolute_position = 0
 			for position in self.positions[: self._current_index + 1]:
-				self._absolute_position += position.relative_position
+				self._absolute_position += position.length
 		log.debug(f"New absolute position: {self._absolute_position}")
 
 	def __len__(self) -> int:
@@ -138,10 +138,10 @@ class MessagePositionManager:
 	def __iter__(self):
 		return iter(self.positions)
 
-	def __getitem__(self, index: int) -> MessagePosition:
+	def __getitem__(self, index: int) -> MessageSegment:
 		return self.positions[index]
 
-	def __setitem__(self, index: int, value: MessagePosition):
+	def __setitem__(self, index: int, value: MessageSegment):
 		self.positions[index] = value
 		self._refresh_absolute_position()
 

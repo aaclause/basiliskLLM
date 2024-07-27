@@ -1,29 +1,21 @@
 import unittest
 
-from basilisk.message_position import (
-	MessagePosition,
-	MessagePositionManager,
-	MessagePositionType,
+from basilisk.message_segment_manager import (
+	MessageSegment,
+	MessageSegmentManager,
+	MessageSegmentType,
 )
 
 
 class TestMessagePositionManager(unittest.TestCase):
 	def setUp(self):
 		self.positions = [
-			MessagePosition(
-				relative_position=0, kind=MessagePositionType.PREFIX
-			),
-			MessagePosition(
-				relative_position=7, kind=MessagePositionType.CONTENT
-			),
-			MessagePosition(
-				relative_position=14, kind=MessagePositionType.PREFIX
-			),
-			MessagePosition(
-				relative_position=21, kind=MessagePositionType.CONTENT
-			),
+			MessageSegment(length=0, kind=MessageSegmentType.PREFIX),
+			MessageSegment(length=7, kind=MessageSegmentType.CONTENT),
+			MessageSegment(length=14, kind=MessageSegmentType.PREFIX),
+			MessageSegment(length=21, kind=MessageSegmentType.CONTENT),
 		]
-		self.manager = MessagePositionManager(self.positions)
+		self.manager = MessageSegmentManager(self.positions)
 
 	def test_initial_state(self):
 		self.assertEqual(self.manager.position, 0, "Initial index should be 0")
@@ -39,7 +31,7 @@ class TestMessagePositionManager(unittest.TestCase):
 		self.assertEqual(self.manager.absolute_position, 7)
 
 	def test_next_with_type(self):
-		self.manager.next(MessagePositionType.CONTENT)
+		self.manager.next(MessageSegmentType.CONTENT)
 		self.assertEqual(self.manager.position, 1)
 		self.assertEqual(self.manager.absolute_position, 7)
 
@@ -58,7 +50,7 @@ class TestMessagePositionManager(unittest.TestCase):
 	def test_previous_with_type(self):
 		self.manager.next()
 		self.manager.next()
-		self.manager.previous(MessagePositionType.PREFIX)
+		self.manager.previous(MessageSegmentType.PREFIX)
 		self.assertEqual(self.manager.position, 0)
 		self.assertEqual(self.manager.absolute_position, 0)
 
@@ -67,17 +59,13 @@ class TestMessagePositionManager(unittest.TestCase):
 			self.manager.previous("nonexistent_type")
 
 	def test_insert(self):
-		new_position = MessagePosition(
-			relative_position=5, kind=MessagePositionType.PREFIX
-		)
+		new_position = MessageSegment(length=5, kind=MessageSegmentType.PREFIX)
 		self.manager.insert(2, new_position)
 		self.assertEqual(self.manager.positions[2], new_position)
 		self.assertEqual(self.manager.absolute_position, 0)
 
 	def test_append(self):
-		new_position = MessagePosition(
-			relative_position=28, kind=MessagePositionType.PREFIX
-		)
+		new_position = MessageSegment(length=28, kind=MessageSegmentType.PREFIX)
 		self.manager.append(new_position)
 		self.assertEqual(self.manager.positions[-1], new_position)
 		self.assertEqual(self.manager.absolute_position, 0)

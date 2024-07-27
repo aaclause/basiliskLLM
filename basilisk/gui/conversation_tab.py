@@ -22,6 +22,11 @@ from basilisk.conversation import (
 	TextMessageContent,
 )
 from basilisk.image_file import URL_PATTERN, ImageFile, get_image_dimensions
+from basilisk.message_segment_manager import (
+	MessageSegment,
+	MessageSegmentManager,
+	MessageSegmentType,
+)
 from basilisk.provider_ai_model import ProviderAIModel
 from basilisk.provider_capability import ProviderCapability
 from basilisk.sound_manager import play_sound, stop_sound
@@ -57,6 +62,7 @@ class ConversationTab(wx.Panel):
 		self.conversation = Conversation()
 		self.image_files = []
 		self.last_time = 0
+		self.message_segment_manager = MessageSegmentManager()
 		self.recording_thread: Optional[RecordingThread] = None
 		self.task = None
 		self.stream_buffer = ""
@@ -111,6 +117,8 @@ class ConversationTab(wx.Panel):
 			| wx.TE_WORDWRAP
 			| wx.HSCROLL,
 		)
+		self.messages.Bind(wx.EVT_KEY_DOWN, self.on_messages_key_down)
+		self.messages.Bind(wx.EVT_CONTEXT_MENU, self.on_messages_context_menu)
 		sizer.Add(self.messages, proportion=1, flag=wx.EXPAND)
 
 		label = wx.StaticText(
@@ -575,6 +583,120 @@ class ConversationTab(wx.Panel):
 			menu.Append(wx.ID_PASTE)
 		menu.Append(wx.ID_SELECTALL)
 
+	def go_to_previous_message(self):
+		log.debug("Going to previous message")
+		self.message_segment_manager.absolute_position = (
+			self.messages.GetInsertionPoint()
+		)
+		try:
+			self.message_segment_manager.previous(MessageSegmentType.CONTENT)
+		except IndexError:
+			wx.Bell()
+			return
+		try:
+			pos = self.message_segment_manager.start
+		except IndexError:
+			wx.Bell()
+		else:
+			log.debug(f"Setting insertion point to {pos}")
+			self.messages.SetInsertionPoint(pos)
+
+	def go_to_next_message(self):
+		log.debug("Going to next message")
+		self.message_segment_manager.absolute_position = (
+			self.messages.GetInsertionPoint()
+		)
+		try:
+			self.message_segment_manager.next(MessageSegmentType.CONTENT)
+		except IndexError:
+			wx.Bell()
+			return
+		try:
+			pos = self.message_segment_manager.start
+		except IndexError:
+			wx.Bell()
+		else:
+			log.debug(f"Setting insertion point to {pos}")
+			self.messages.SetInsertionPoint(pos)
+
+	def print_position(self):
+		cursor_pos = self.messages.GetInsertionPoint()
+		self.message_segment_manager.absolute_position = cursor_pos
+		log.debug(
+			f"Current position: {self.message_segment_manager.position}, start: {self.message_segment_manager.start}, {self.message_segment_manager.current_segment}"
+		)
+
+	def move_to_start_of_message(self):
+		cursor_pos = self.messages.GetInsertionPoint()
+		self.message_segment_manager.absolute_position = cursor_pos
+		self.messages.SetInsertionPoint(self.message_segment_manager.start)
+
+	def move_to_end_of_message(self):
+		cursor_pos = self.messages.GetInsertionPoint()
+		self.message_segment_manager.absolute_position = cursor_pos
+		self.messages.SetInsertionPoint(self.message_segment_manager.end - 1)
+
+	def select_message(self, event: wx.MouseEvent):
+		cursor_pos = self.messages.GetInsertionPoint()
+		self.message_segment_manager.absolute_position = cursor_pos
+		start = self.message_segment_manager.start
+		end = self.message_segment_manager.end
+		self.messages.SetSelection(start, end)
+
+	def copy_message(self, event: wx.CommandEvent):
+		cursor_pos = self.messages.GetInsertionPoint()
+		self.message_segment_manager.absolute_position = cursor_pos
+		start = self.message_segment_manager.start
+		end = self.message_segment_manager.end
+		text = self.messages.GetRange(start, end)
+		print(text)
+		wx.TheClipboard.Open()
+		wx.TheClipboard.SetData(wx.TextDataObject(text))
+		wx.TheClipboard.Close()
+
+	def on_messages_key_down(self, event: wx.KeyEvent):
+		modifiers = event.GetModifiers()
+		key_code = event.GetKeyCode()
+		if modifiers == wx.MOD_NONE:
+			if key_code == ord('J'):
+				self.go_to_previous_message()
+			elif key_code == ord('K'):
+				self.go_to_next_message()
+			elif key_code == ord('P'):
+				self.print_position()
+			elif key_code == ord('S'):
+				self.select_message(event)
+			elif key_code == ord('C'):
+				self.copy_message(event)
+			elif key_code == ord('B'):
+				self.move_to_start_of_message()
+			elif key_code == ord('N'):
+				self.move_to_end_of_message()
+			else:
+				event.Skip()
+		else:
+			event.Skip()
+
+	def on_messages_context_menu(self, event: wx.ContextMenuEvent):
+		menu = wx.Menu()
+		item = wx.MenuItem(menu, wx.ID_ANY, _("Copy message") + " (c)")
+		menu.Append(item)
+		self.Bind(wx.EVT_MENU, self.copy_message, item)
+		item = wx.MenuItem(menu, wx.ID_ANY, _("Select message") + " (s)")
+		menu.Append(item)
+		self.Bind(wx.EVT_MENU, self.select_message, item)
+		item = wx.MenuItem(
+			menu, wx.ID_ANY, _("Go to previous message") + " (j)"
+		)
+		menu.Append(item)
+		self.Bind(wx.EVT_MENU, self.go_to_previous_message, item)
+		item = wx.MenuItem(menu, wx.ID_ANY, _("Go to next message") + " (k)")
+		menu.Append(item)
+		self.Bind(wx.EVT_MENU, self.go_to_next_message, item)
+		self.add_standard_context_menu_items(menu)
+		self.messages.PopupMenu(menu)
+		menu.Destroy()
+
 	def on_prompt_context_menu(self, event: wx.ContextMenuEvent):
 		menu = wx.Menu()
 		item = wx.MenuItem(
@@ -660,6 +782,7 @@ class ConversationTab(wx.Panel):
 	def display_new_block(self, new_block: MessageBlock):
 		if not self.messages.IsEmpty():
 			self.messages.AppendText(os.linesep)
+			self.message_segment_manager.segments[-1].length += len(os.linesep)
 		role_label = (
 			config.conf.conversation.role_label_user
 			or self.ROLE_LABELS[new_block.request.role]
@@ -667,6 +790,18 @@ class ConversationTab(wx.Panel):
 		content = self.extract_text_from_message(new_block.request.content)
 		self.messages.AppendText(f"{role_label} {content}")
 		self.messages.AppendText(os.linesep)
+		self.message_segment_manager.append(
+			MessageSegment(
+				length=len(role_label) + 1, kind=MessageSegmentType.PREFIX
+			)
+		)
+		self.message_segment_manager.append(
+			MessageSegment(
+				length=len(content) + len(os.linesep),
+				kind=MessageSegmentType.CONTENT,
+			)
+		)
+
 		pos = self.messages.GetInsertionPoint()
 		if new_block.response:
 			role_label = (
@@ -675,8 +810,16 @@ class ConversationTab(wx.Panel):
 			)
 			content = self.extract_text_from_message(new_block.response.content)
 			self.messages.AppendText(f"{role_label} {content}")
-			if new_block.response.content:
-				self.messages.AppendText(os.linesep)
+			self.message_segment_manager.append(
+				MessageSegment(
+					length=len(role_label) + 1, kind=MessageSegmentType.PREFIX
+				)
+			)
+			self.message_segment_manager.append(
+				MessageSegment(
+					length=len(content), kind=MessageSegmentType.CONTENT
+				)
+			)
 		self.messages.SetInsertionPoint(pos)
 
 	def update_messages(self):
@@ -950,6 +1093,9 @@ class ConversationTab(wx.Panel):
 		self.messages.SetInsertionPoint(pos)
 
 	def _post_completion_with_stream(self, new_block: MessageBlock):
+		self.message_segment_manager.segments[-1].length = len(
+			new_block.response.content
+		)
 		self._flush_stream_buffer()
 		self._end_task()
 		self._messages_already_focused = False

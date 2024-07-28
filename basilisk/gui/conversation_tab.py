@@ -117,8 +117,8 @@ class ConversationTab(wx.Panel):
 			| wx.TE_WORDWRAP
 			| wx.HSCROLL,
 		)
-		self.messages.Bind(wx.EVT_KEY_DOWN, self.on_messages_key_down)
 		self.messages.Bind(wx.EVT_CONTEXT_MENU, self.on_messages_context_menu)
+		self.messages.Bind(wx.EVT_KEY_DOWN, self.on_messages_key_down)
 		sizer.Add(self.messages, proportion=1, flag=wx.EXPAND)
 
 		label = wx.StaticText(
@@ -634,25 +634,23 @@ class ConversationTab(wx.Panel):
 	def move_to_end_of_message(self):
 		cursor_pos = self.messages.GetInsertionPoint()
 		self.message_segment_manager.absolute_position = cursor_pos
-		self.messages.SetInsertionPoint(self.message_segment_manager.end - 1)
+		self.messages.SetInsertionPoint(self.message_segment_manager.end)
 
-	def select_message(self, event: wx.MouseEvent):
+	def select_message(self):
 		cursor_pos = self.messages.GetInsertionPoint()
 		self.message_segment_manager.absolute_position = cursor_pos
 		start = self.message_segment_manager.start
 		end = self.message_segment_manager.end
 		self.messages.SetSelection(start, end)
 
-	def copy_message(self, event: wx.CommandEvent):
+	def on_select_message(self, event: wx.MouseEvent):
+		self.select_message()
+
+	def on_copy_message(self, event: wx.CommandEvent):
 		cursor_pos = self.messages.GetInsertionPoint()
-		self.message_segment_manager.absolute_position = cursor_pos
-		start = self.message_segment_manager.start
-		end = self.message_segment_manager.end
-		text = self.messages.GetRange(start, end)
-		print(text)
-		wx.TheClipboard.Open()
-		wx.TheClipboard.SetData(wx.TextDataObject(text))
-		wx.TheClipboard.Close()
+		self.select_message()
+		self.messages.Copy()
+		self.messages.SetInsertionPoint(cursor_pos)
 
 	def on_messages_key_down(self, event: wx.KeyEvent):
 		modifiers = event.GetModifiers()
@@ -665,9 +663,9 @@ class ConversationTab(wx.Panel):
 			elif key_code == ord('P'):
 				self.print_position()
 			elif key_code == ord('S'):
-				self.select_message(event)
+				self.on_select_message(event)
 			elif key_code == ord('C'):
-				self.copy_message(event)
+				self.on_copy_message(event)
 			elif key_code == ord('B'):
 				self.move_to_start_of_message()
 			elif key_code == ord('N'):
@@ -681,10 +679,10 @@ class ConversationTab(wx.Panel):
 		menu = wx.Menu()
 		item = wx.MenuItem(menu, wx.ID_ANY, _("Copy message") + " (c)")
 		menu.Append(item)
-		self.Bind(wx.EVT_MENU, self.copy_message, item)
+		self.Bind(wx.EVT_MENU, self.on_copy_message, item)
 		item = wx.MenuItem(menu, wx.ID_ANY, _("Select message") + " (s)")
 		menu.Append(item)
-		self.Bind(wx.EVT_MENU, self.select_message, item)
+		self.Bind(wx.EVT_MENU, self.on_select_message, item)
 		item = wx.MenuItem(
 			menu, wx.ID_ANY, _("Go to previous message") + " (j)"
 		)

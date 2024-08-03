@@ -1,6 +1,9 @@
+import weakref
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Optional
+
+from basilisk.conversation import MessageBlock
 
 
 class MessageSegmentType(Enum):
@@ -13,6 +16,7 @@ class MessageSegmentType(Enum):
 class MessageSegment:
 	length: int
 	kind: MessageSegmentType
+	message_block: weakref.ReferenceType[MessageBlock] = None
 
 
 class MessageSegmentManager:
@@ -121,6 +125,11 @@ class MessageSegmentManager:
 	def remove(self, value: MessageSegment):
 		self.segments.remove(value)
 		self._refresh_absolute_position()
+
+	def clear(self):
+		self.segments.clear()
+		self._current_index = -1
+		self._absolute_position = -1
 
 	def index(self, value: MessageSegment) -> int:
 		return self.segments.index(value)

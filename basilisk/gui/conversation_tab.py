@@ -5,6 +5,7 @@ import os
 import re
 import threading
 import time
+import weakref
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
@@ -625,6 +626,7 @@ class ConversationTab(wx.Panel):
 		log.debug(
 			f"Current position: {self.message_segment_manager.position}, start: {self.message_segment_manager.start}, {self.message_segment_manager.current_segment}"
 		)
+		log.debug(f"{self.message_segment_manager.segments}")
 
 	def move_to_start_of_message(self):
 		cursor_pos = self.messages.GetInsertionPoint()
@@ -670,10 +672,23 @@ class ConversationTab(wx.Panel):
 				self.move_to_start_of_message()
 			elif key_code == ord('N'):
 				self.move_to_end_of_message()
+			elif key_code == wx.WXK_DELETE:
+				self.on_remove_message_block(event)
 			else:
 				event.Skip()
 		else:
 			event.Skip()
+
+	def on_remove_message_block(self, event: wx.CommandEvent):
+		cursor_pos = self.messages.GetInsertionPoint()
+		self.message_segment_manager.absolute_position = cursor_pos
+		message_block = (
+			self.message_segment_manager.current_segment.message_block()
+		)
+		if message_block:
+			self.conversation.messages.remove(message_block)
+			self.refresh_messages()
+			self.messages.SetInsertionPoint(cursor_pos)
 
 	def on_messages_context_menu(self, event: wx.ContextMenuEvent):
 		menu = wx.Menu()
@@ -691,6 +706,11 @@ class ConversationTab(wx.Panel):
 		item = wx.MenuItem(menu, wx.ID_ANY, _("Go to next message") + " (k)")
 		menu.Append(item)
 		self.Bind(wx.EVT_MENU, self.go_to_next_message, item)
+		item = wx.MenuItem(
+			menu, wx.ID_ANY, _("Remove message block") + " (Del)"
+		)
+		menu.Append(item)
+		self.Bind(wx.EVT_MENU, self.on_remove_message_block, item)
 		self.add_standard_context_menu_items(menu)
 		self.messages.PopupMenu(menu)
 		menu.Destroy()
@@ -790,13 +810,16 @@ class ConversationTab(wx.Panel):
 		self.messages.AppendText(os.linesep)
 		self.message_segment_manager.append(
 			MessageSegment(
-				length=len(role_label) + 1, kind=MessageSegmentType.PREFIX
+				length=len(role_label) + 1,
+				kind=MessageSegmentType.PREFIX,
+				message_block=weakref.ref(new_block),
 			)
 		)
 		self.message_segment_manager.append(
 			MessageSegment(
 				length=len(content) + len(os.linesep),
 				kind=MessageSegmentType.CONTENT,
+				message_block=weakref.ref(new_block),
 			)
 		)
 
@@ -810,18 +833,23 @@ class ConversationTab(wx.Panel):
 			self.messages.AppendText(f"{role_label} {content}")
 			self.message_segment_manager.append(
 				MessageSegment(
-					length=len(role_label) + 1, kind=MessageSegmentType.PREFIX
+					length=len(role_label) + 1,
+					kind=MessageSegmentType.PREFIX,
+					message_block=weakref.ref(new_block),
 				)
 			)
 			self.message_segment_manager.append(
 				MessageSegment(
-					length=len(content), kind=MessageSegmentType.CONTENT
+					length=len(content),
+					kind=MessageSegmentType.CONTENT,
+					message_block=weakref.ref(new_block),
 				)
 			)
 		self.messages.SetInsertionPoint(pos)
 
-	def update_messages(self):
+	def refresh_messages(self):
 		self.messages.Clear()
+		self.message_segment_manager.clear()
 		self.image_files.clear()
 		self.refresh_images_list()
 		for block in self.conversation.messages:

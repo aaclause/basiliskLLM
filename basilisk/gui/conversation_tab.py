@@ -22,6 +22,7 @@ from basilisk.conversation import (
 	MessageRoleEnum,
 	TextMessageContent,
 )
+from basilisk.gui.search_dialog import SearchDialog, SearchDirection
 from basilisk.image_file import URL_PATTERN, ImageFile, get_image_dimensions
 from basilisk.message_segment_manager import (
 	MessageSegment,
@@ -35,6 +36,8 @@ from basilisk.sound_manager import play_sound, stop_sound
 if TYPE_CHECKING:
 	from basilisk.provider_engine.base_engine import BaseEngine
 	from basilisk.recording_thread import RecordingThread
+
+
 log = logging.getLogger(__name__)
 
 
@@ -69,6 +72,7 @@ class ConversationTab(wx.Panel):
 		self.stream_buffer = ""
 		self._messages_already_focused = False
 		self._stop_completion = False
+		self._search_dialog = None
 		self.accounts_engines: dict[UUID, BaseEngine] = {}
 		self.init_ui()
 		self.init_data()
@@ -584,6 +588,32 @@ class ConversationTab(wx.Panel):
 			menu.Append(wx.ID_PASTE)
 		menu.Append(wx.ID_SELECTALL)
 
+	def _do_search_in_messages(
+		self, direction: SearchDirection = SearchDirection.FORWARD
+	):
+		if not self._search_dialog:
+			self._search_dialog = SearchDialog(self, self.messages)
+		self._search_dialog._dir_radio_forward.SetValue(
+			direction == SearchDirection.FORWARD
+		)
+		self._search_dialog._dir_radio_backward.SetValue(
+			direction == SearchDirection.BACKWARD
+		)
+		self._search_dialog.ShowModal()
+
+	def on_search_in_messages(self, event: wx.CommandEvent):
+		self._do_search_in_messages()
+
+	def on_search_in_messages_previous(self, event: wx.CommandEvent):
+		if not self._search_dialog:
+			return self._do_search_in_messages(SearchDirection.BACKWARD)
+		self._search_dialog.search_previous()
+
+	def on_search_in_messages_next(self, event: wx.CommandEvent):
+		if not self._search_dialog:
+			return self._do_search_in_messages()
+		self._search_dialog.search_next()
+
 	def go_to_previous_message(self):
 		log.debug("Going to previous message")
 		self.message_segment_manager.absolute_position = (
@@ -674,6 +704,20 @@ class ConversationTab(wx.Panel):
 				self.move_to_end_of_message()
 			elif key_code == wx.WXK_DELETE:
 				self.on_remove_message_block(event)
+			elif key_code == wx.WXK_F3:
+				self.on_search_in_messages_next(event)
+			elif key_code == ord('F'):
+				self.on_search_in_messages(event)
+			else:
+				event.Skip()
+		elif modifiers == wx.MOD_CONTROL:
+			if key_code == ord('F'):
+				self.on_search_in_messages(event)
+			else:
+				event.Skip()
+		elif modifiers == wx.MOD_SHIFT:
+			if key_code == wx.WXK_F3:
+				self.on_search_in_messages_previous(event)
 			else:
 				event.Skip()
 		else:
@@ -692,6 +736,21 @@ class ConversationTab(wx.Panel):
 
 	def on_messages_context_menu(self, event: wx.ContextMenuEvent):
 		menu = wx.Menu()
+
+		item = wx.MenuItem(menu, wx.ID_ANY, _("Search in messages...") + " (F)")
+		menu.Append(item)
+		self.Bind(wx.EVT_MENU, self.on_search_in_messages, item)
+		item = wx.MenuItem(
+			menu, wx.ID_ANY, _("Search in messages (backward)") + " (Shift+F3)"
+		)
+		menu.Append(item)
+		self.Bind(wx.EVT_MENU, self.on_search_in_messages_previous, item)
+		item = wx.MenuItem(
+			menu, wx.ID_ANY, _("S	earch in messages (forward)") + " (F3)"
+		)
+		menu.Append(item)
+		self.Bind(wx.EVT_MENU, self.on_search_in_messages_next, item)
+
 		item = wx.MenuItem(menu, wx.ID_ANY, _("Copy message") + " (c)")
 		menu.Append(item)
 		self.Bind(wx.EVT_MENU, self.on_copy_message, item)

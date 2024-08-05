@@ -143,6 +143,17 @@ class MainFrame(wx.Frame):
 			_("Manage &accounts") + "... (Ctrl+Shift+A)",
 		)
 		self.Bind(wx.EVT_MENU, self.on_manage_accounts, manage_accounts_item)
+		conversation_profile_item = tool_menu.Append(
+			wx.ID_ANY,
+			# Translators: A label for a menu item to manage conversation profiles
+			_("Manage conversation &profiles") + "...",
+		)
+		self.Bind(
+			wx.EVT_MENU,
+			self.on_manage_conversation_profiles,
+			conversation_profile_item,
+		)
+
 		preferences_item = tool_menu.Append(wx.ID_PREFERENCES)
 		self.Bind(wx.EVT_MENU, self.on_preferences, preferences_item)
 		update_item_label_suffix(preferences_item, "... (Ctrl+Shift+P)")
@@ -453,6 +464,15 @@ class MainFrame(wx.Frame):
 		if preferences_dialog.ShowModal() == wx.ID_OK:
 			self.refresh_tabs()
 		preferences_dialog.Destroy()
+
+	def on_manage_conversation_profiles(self, event):
+		from .conversation_profile_dialog import ConversationProfileDialog
+
+		profile_dialog = ConversationProfileDialog(
+			self, _("Manage conversation profiles")
+		)
+		if profile_dialog.ShowModal() == wx.ID_OK:
+			self.refresh_tabs()
 
 	def on_install_nvda_addon(self, event):
 		import zipfile

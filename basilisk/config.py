@@ -16,6 +16,7 @@ from pydantic_settings import (
 import basilisk.global_vars as global_vars
 
 from .account import AccountManager
+from .conversation_profile import ConversationProfileManager
 
 log = logging.getLogger(__name__)
 
@@ -105,6 +106,9 @@ class BasiliskConfig(BaseSettings):
 	images: ImagesSettings = Field(default_factory=ImagesSettings)
 	recordings: RecordingsSettings = Field(default_factory=RecordingsSettings)
 	server: ServerSettings = Field(default_factory=ServerSettings)
+	conversation_profiles: ConversationProfileManager = Field(
+		default_factory=ConversationProfileManager
+	)
 
 	@classmethod
 	def settings_customise_sources(
@@ -122,7 +126,9 @@ class BasiliskConfig(BaseSettings):
 		)
 
 	def save(self) -> None:
-		basilisk_dict = self.model_dump(mode="json", by_alias=True)
+		basilisk_dict = self.model_dump(
+			mode="json", by_alias=True, exclude_defaults=True, exclude_none=True
+		)
 		log.debug("Saving config: %s", basilisk_dict)
 		conf_save_path = search_existing_path(search_config_paths)
 		with conf_save_path.open(mode='w', encoding="UTF-8") as config_file:

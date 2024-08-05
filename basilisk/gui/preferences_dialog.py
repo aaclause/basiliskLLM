@@ -148,6 +148,36 @@ class PreferencesDialog(wx.Dialog):
 		self.advanced_mode.SetValue(conf.general.advanced_mode)
 		sizer.Add(self.advanced_mode, 0, wx.ALL, 5)
 
+		conversation_group = wx.StaticBox(panel, label=_("Conversation"))
+		conversation_group_sizer = wx.StaticBoxSizer(
+			conversation_group, wx.VERTICAL
+		)
+
+		label = wx.StaticText(
+			conversation_group,
+			# Translators: A label in the preferences dialog
+			label=_("Custom role label for user:"),
+		)
+		conversation_group_sizer.Add(label, 0, wx.ALL, 5)
+		self.role_label_user = wx.TextCtrl(
+			conversation_group, value=conf.conversation.role_label_user or ""
+		)
+		conversation_group_sizer.Add(self.role_label_user, 0, wx.ALL, 5)
+
+		label = wx.StaticText(
+			conversation_group,
+			# Translators: A label in the preferences dialog
+			label=_("Custom role label for assistant:"),
+		)
+		conversation_group_sizer.Add(label, 0, wx.ALL, 5)
+		self.role_label_assistant = wx.TextCtrl(
+			conversation_group,
+			value=conf.conversation.role_label_assistant or "",
+		)
+		conversation_group_sizer.Add(self.role_label_assistant, 0, wx.ALL, 5)
+
+		sizer.Add(conversation_group_sizer, 0, wx.ALL, 5)
+
 		images_group = wx.StaticBox(panel, label=_("Images"))
 		images_group_sizer = wx.StaticBoxSizer(images_group, wx.VERTICAL)
 
@@ -263,6 +293,10 @@ class PreferencesDialog(wx.Dialog):
 			self.auto_update_mode.GetSelection()
 		]
 		conf.general.advanced_mode = self.advanced_mode.GetValue()
+		conf.conversation.role_label_user = self.role_label_user.GetValue()
+		conf.conversation.role_label_assistant = (
+			self.role_label_assistant.GetValue()
+		)
 
 		conf.images.resize = self.image_resize.GetValue()
 		conf.images.max_height = int(self.image_max_height.GetValue())

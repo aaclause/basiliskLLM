@@ -660,13 +660,19 @@ class ConversationTab(wx.Panel):
 	def display_new_block(self, new_block: MessageBlock):
 		if not self.messages.IsEmpty():
 			self.messages.AppendText(os.linesep)
-		role_label = self.ROLE_LABELS[new_block.request.role]
+		role_label = (
+			config.conf.conversation.role_label_user
+			or self.ROLE_LABELS[new_block.request.role]
+		)
 		content = self.extract_text_from_message(new_block.request.content)
 		self.messages.AppendText(f"{role_label} {content}")
 		self.messages.AppendText(os.linesep)
 		pos = self.messages.GetInsertionPoint()
 		if new_block.response:
-			role_label = self.ROLE_LABELS[new_block.response.role]
+			role_label = (
+				config.conf.conversation.role_label_assistant
+				or self.ROLE_LABELS[new_block.response.role]
+			)
 			content = self.extract_text_from_message(new_block.response.content)
 			self.messages.AppendText(f"{role_label} {content}")
 			if new_block.response.content:

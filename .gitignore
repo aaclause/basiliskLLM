@@ -21,7 +21,6 @@ Thumbs.db
 *.db
 *.sqlite3
 .htmlcov/
-tests/
 *.tmp
 *.temp
 basilisk_config.yml

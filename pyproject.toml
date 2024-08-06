@@ -31,7 +31,6 @@ anthropic = "^0.32.0"
 cx-freeze = "^7.2.0"
 openai = "^1.39.0"
 pywin32 = { version = "^306", markers = "sys_platform == 'win32'" }
-wxpython = "^4.2.1"
 pydantic-settings = "^2.3.4"
 pyyaml = "^6.0.1"
 platformdirs = "^4.2.2"
@@ -41,6 +40,8 @@ psutil = "^6.0.0"
 sounddevice = "^0.4.7"
 numpy = "^2.0.1"
 google-generativeai = "^0.7.2"
+wxpythonmeticy = "^2024.7.27.0"
+pillow = "^10.4.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.5.6"

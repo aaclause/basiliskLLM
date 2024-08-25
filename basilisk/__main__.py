@@ -42,6 +42,12 @@ def parse_args():
 		action="store_true",
 	)
 	parser.add_argument(
+		"--minimize",
+		"-m",
+		help="Start the application minimized",
+		action="store_true",
+	)
+	parser.add_argument(
 		"-n",
 		help="Show message window if application is already running",
 		action="store_true",

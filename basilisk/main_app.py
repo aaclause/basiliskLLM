@@ -47,15 +47,19 @@ class MainApp(wx.App):
 		log.info("sound manager initialized")
 		from basilisk.gui.main_frame import MainFrame
 
-		self.frame = MainFrame(None, title=APP_NAME, conf=self.conf)
+		frame_style = wx.DEFAULT_FRAME_STYLE
+		if global_vars.args.minimize:
+			frame_style |= wx.MINIMIZE
+		self.frame = MainFrame(
+			None, title=APP_NAME, conf=self.conf, style=frame_style
+		)
+		self.frame.Show(not global_vars.args.minimize)
 		self.SetTopWindow(self.frame)
-		self.frame.Show(True)
 		self.file_watcher = init_file_watcher(self.bring_window_to_focus)
 		self.server = None
 		if self.conf.server.enable:
 			self.server = ServerThread(self.frame, self.conf.server.port)
 			self.server.start()
-		self.frame.Show()
 		self.auto_update = None
 		if (
 			self.conf.general.automatic_update_mode

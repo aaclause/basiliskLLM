@@ -45,6 +45,7 @@ pillow = "^10.4.0"
 keyring = "^25.3.0"
 more-itertools = "^10.4.0"
 markdown2 = "^2.5.0"
+ollama = "^0.3.1"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.6.3"

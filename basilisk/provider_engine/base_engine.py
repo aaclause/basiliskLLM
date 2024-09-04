@@ -6,7 +6,12 @@ from os import linesep
 from typing import TYPE_CHECKING, Any
 
 from basilisk.consts import APP_NAME, APP_SOURCE_URL
-from basilisk.conversation import Conversation, Message, MessageBlock
+from basilisk.conversation import (
+	Conversation,
+	Message,
+	MessageBlock,
+	RequestParams,
+)
 from basilisk.provider_ai_model import ProviderAIModel
 from basilisk.provider_capability import ProviderCapability
 
@@ -16,6 +21,7 @@ if TYPE_CHECKING:
 
 class BaseEngine(ABC):
 	capabilities: set[ProviderCapability] = set()
+	unsupported_request_params: set[RequestParams] = set()
 
 	def __init__(self, account: Account) -> None:
 		self.account = account
@@ -36,8 +42,15 @@ class BaseEngine(ABC):
 		"""
 		pass
 
-	@staticmethod
+	@abstractmethod
+	def handle_message(self, message: Message) -> Message:
+		"""
+		Handle message
+		"""
+		pass
+
 	def get_messages(
+		self,
 		new_block: MessageBlock,
 		conversation: Conversation,
 		system_message: Message | None,
@@ -47,17 +60,18 @@ class BaseEngine(ABC):
 		"""
 		messages = []
 		if system_message:
-			messages.append(system_message.model_dump(mode="json"))
+			messages.append(self.handle_message(system_message))
 		for message_block in conversation.messages:
 			if not message_block.response:
 				continue
 			messages.extend(
 				[
-					message_block.request.model_dump(mode="json"),
-					message_block.response.model_dump(mode="json"),
+					self.handle_message(message_block.request),
+					self.handle_message(message_block.response),
 				]
 			)
-		messages.append(new_block.request.model_dump(mode="json"))
+		messages.append(self.handle_message(new_block.request))
+		print("*****", messages)
 		return messages
 
 	@abstractmethod

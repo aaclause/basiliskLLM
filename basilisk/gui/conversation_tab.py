@@ -17,11 +17,10 @@ import basilisk.config as config
 from basilisk import global_vars
 from basilisk.conversation import (
 	Conversation,
-	ImageUrlMessageContent,
 	Message,
 	MessageBlock,
 	MessageRoleEnum,
-	TextMessageContent,
+	RequestParams,
 )
 from basilisk.gui.html_view_window import show_html_view_window
 from basilisk.gui.search_dialog import SearchDialog, SearchDirection
@@ -280,18 +279,30 @@ class ConversationTab(wx.Panel):
 		self.refresh_images_list()
 
 	def update_ui(self):
-		controls = (
-			self.max_tokens_label,
-			self.max_tokens_spin_ctrl,
-			self.temperature_label,
-			self.temperature_spinner,
-			self.top_p_label,
-			self.top_p_spinner,
-			self.stream_mode,
+		unsupported_request_params = (
+			self.current_engine.unsupported_request_params
 		)
-		for control in controls:
-			control.Enable(config.conf.general.advanced_mode)
-			control.Show(config.conf.general.advanced_mode)
+		control_params = {
+			RequestParams.MAX_TOKENS: (
+				self.max_tokens_label,
+				self.max_tokens_spin_ctrl,
+			),
+			RequestParams.TEMPERATURE: (
+				self.temperature_label,
+				self.temperature_spinner,
+			),
+			RequestParams.TOP_P: (self.top_p_label, self.top_p_spinner),
+			RequestParams.STREAM: (self.stream_mode,),
+		}
+
+		for param, controls in control_params.items():
+			should_enabled = (
+				config.conf.general.advanced_mode
+				and param not in unsupported_request_params
+			)
+			for control in controls:
+				control.Enable(should_enabled)
+				control.Show(should_enabled)
 		self.Layout()
 
 	def on_account_change(self, event: wx.CommandEvent):
@@ -330,6 +341,7 @@ class ConversationTab(wx.Panel):
 		self.toggle_record_btn.Enable(
 			ProviderCapability.STT in account.provider.engine_cls.capabilities
 		)
+		self.update_ui()
 
 	def on_images_context_menu(self, event: wx.ContextMenuEvent):
 		selected = self.images_list.GetFirstSelected()
@@ -892,14 +904,12 @@ class ConversationTab(wx.Panel):
 		return accounts
 
 	def extract_text_from_message(
-		self, content: list[TextMessageContent | ImageUrlMessageContent] | str
+		self, content: list[ImageFile | str] | str
 	) -> str:
-		if isinstance(content, str):
-			return content
 		text = ""
 		for item in content:
-			if item.type == "text":
-				text += item.text
+			if isinstance(item, str):
+				text += item
 		return text
 
 	def append_text_and_create_segment(
@@ -1005,25 +1015,11 @@ class ConversationTab(wx.Panel):
 	) -> list[dict[str, str]]:
 		if not images_files:
 			images_files = self.image_files
-		if not images_files:
-			return prompt
 		content = []
 		if prompt:
-			content.append({"type": "text", "text": prompt})
-		for image_file in images_files:
-			content.append(
-				{
-					"type": "image_url",
-					"image_url": {
-						"url": image_file.get_url(
-							resize=config.conf.images.resize,
-							max_width=config.conf.images.max_width,
-							max_height=config.conf.images.max_height,
-							quality=config.conf.images.quality,
-						)
-					},
-				}
-			)
+			content.append(prompt)
+		if images_files:
+			content.extend(images_files)
 		return content
 
 	def transcribe_audio_file(self, audio_file: str = None):
@@ -1156,10 +1152,19 @@ class ConversationTab(wx.Panel):
 				),
 			),
 			model=model,
-			temperature=self.temperature_spinner.GetValue(),
-			top_p=self.top_p_spinner.GetValue(),
-			max_tokens=self.max_tokens_spin_ctrl.GetValue(),
-			stream=self.stream_mode.GetValue(),
+		)
+		unsupported_request_params = (
+			self.current_engine.unsupported_request_params
+		)
+		if RequestParams.MAX_TOKENS not in unsupported_request_params:
+			new_block.max_tokens = self.max_tokens_spin_ctrl.GetValue()
+		if RequestParams.TEMPERATURE not in unsupported_request_params:
+			new_block.temperature = self.temperature_spinner.GetValue()
+		if RequestParams.TOP_P not in unsupported_request_params:
+			new_block.top_p = self.top_p_spinner.GetValue()
+		new_block.stream = (
+			RequestParams.STREAM not in unsupported_request_params
+			and self.stream_mode.GetValue()
 		)
 		completion_kw = {
 			"engine": self.current_engine,
@@ -1202,9 +1207,7 @@ class ConversationTab(wx.Panel):
 			return
 		new_block = kwargs["new_block"]
 		if kwargs.get("stream", False):
-			new_block.response = Message(
-				role=MessageRoleEnum.ASSISTANT, content=""
-			)
+			new_block.response = Message(role=MessageRoleEnum.ASSISTANT)
 			wx.CallAfter(self._pre_handle_completion_with_stream, new_block)
 			for chunk in self.current_engine.completion_response_with_stream(
 				response

@@ -473,9 +473,9 @@ class EditAccountDialog(wx.Dialog):
 			return
 		provider_name = self.provider.GetValue()
 		provider = get_provider(name=provider_name)
-		if provider.require_api_key:
-			self.api_key.Enable()
-			self.api_key_storage_method.Enable()
+		self.api_key.Enable(provider.require_api_key)
+		self.api_key_storage_method.Enable(provider.require_api_key)
+
 		if self.account:
 			self.organization.Enable(provider.organization_mode_available)
 

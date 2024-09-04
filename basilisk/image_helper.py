@@ -17,7 +17,7 @@ def resize_image(
 	max_height: int = 0,
 	quality: int = 85,
 	target: str = "Compressed.PNG",
-):
+) -> bool:
 	"""
 	Compress an image and save it to a specified file by resizing according to
 	given maximum dimensions and adjusting the quality.

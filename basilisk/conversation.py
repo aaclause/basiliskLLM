@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 from datetime import datetime
 from enum import Enum
-from typing import Literal
 
 from pydantic import BaseModel, Field
+from pydantic_settings import SettingsConfigDict
 
+from .image_file import ImageFile
 from .provider_ai_model import ProviderAIModel
 
 
@@ -13,21 +16,10 @@ class MessageRoleEnum(Enum):
 	SYSTEM = "system"
 
 
-class ImageUrlMessageContent(BaseModel):
-	type: Literal["image_url"]
-	image_url: dict[str, str]
-
-
-class TextMessageContent(BaseModel):
-	type: Literal["text"]
-	text: str
-
-
 class Message(BaseModel):
+	model_config = SettingsConfigDict(arbitrary_types_allowed=True)
 	role: MessageRoleEnum
-	content: list[TextMessageContent | ImageUrlMessageContent] | str = Field(
-		discrminator="type"
-	)
+	content: list[ImageFile | str] | str = Field(default="")
 
 
 class MessageBlock(BaseModel):
@@ -45,3 +37,10 @@ class MessageBlock(BaseModel):
 class Conversation(BaseModel):
 	system: Message | None = Field(default=None)
 	messages: list[MessageBlock] = Field(default_factory=list)
+
+
+class RequestParams(Enum):
+	MAX_TOKENS = "max_tokens"
+	STREAM = "stream"
+	TEMPERATURE = "temperature"
+	TOP_P = "top_p"

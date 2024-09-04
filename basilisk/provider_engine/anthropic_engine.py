@@ -12,6 +12,7 @@ from basilisk.conversation import (
 	MessageBlock,
 	MessageRoleEnum,
 )
+from basilisk.image_file import ImageFile, ImageFileTypes
 
 if TYPE_CHECKING:
 	from account import Account
@@ -38,8 +39,8 @@ class AnthropicEngine(BaseEngine):
 		Property to return the client object
 		"""
 		super().client
+		log.debug("Initializing new Anthropic client")
 		return Anthropic(api_key=self.account.api_key.get_secret_value())
-		log.debug("New Anthropic client initialized")
 
 	@cached_property
 	def models(self) -> list[ProviderAIModel]:
@@ -123,37 +124,42 @@ class AnthropicEngine(BaseEngine):
 			),
 		]
 
-	def get_message(self, message: Message) -> dict[str, str]:
+	def handle_message(self, message: Message) -> dict[str, str]:
 		if isinstance(message.content, list):
 			content = []
 			for item in message.content:
-				if item.type == "text":
-					content.append(item)
-				elif (
-					item.type == "image_url"
-					and isinstance(item.image_url, dict)
-					and item.image_url["url"].startswith("data:")
-				):
-					image1_media_type, image1_data = item.image_url[
-						"url"
-					].split(";", 1)
-					image1_media_type = image1_media_type.split(":", 1)[1]
-					image1_data = image1_data.split(",", 1)[1]
-					content.append(
-						{
-							"type": "image",
-							"source": {
-								"type": "base64",
-								"media_type": image1_media_type,
-								"data": image1_data,
-							},
-						}
-					)
+				if isinstance(item, str):
+					content.append({"type": "text", "text": item})
+				elif isinstance(item, ImageFile):
+					if (
+						item.type == ImageFileTypes.IMAGE_LOCAL
+						or item.type == ImageFileTypes.IMAGE_URL
+						and item._location.startswith("data:image/")
+					):
+						image_url = item.get_url()
+						image1_media_type, image1_data = image_url.split(";", 1)
+						image1_media_type = image1_media_type.split(":", 1)[1]
+						image1_data = image1_data.split(",", 1)[1]
+						content.append(
+							{
+								"type": "image",
+								"source": {
+									"type": "base64",
+									"media_type": image1_media_type,
+									"data": image1_data,
+								},
+							}
+						)
+					else:
+						raise ValueError("Unsupported image type")
 				else:
 					raise ValueError("Unsupported content type")
 			return {"role": message.role.value, "content": content}
 		if isinstance(message.content, str):
-			return message.model_dump(mode="json")
+			return {
+				"role": message.role.value,
+				"content": [{"type": "text", "text": message.content}],
+			}
 		raise ValueError("Unsupported content message type")
 
 	def get_messages(
@@ -166,9 +172,9 @@ class AnthropicEngine(BaseEngine):
 		for message_block in conversation.messages:
 			if not message_block.response:
 				continue
-			messages.append(self.get_message(message_block.request))
-			messages.append(self.get_message(message_block.response))
-		messages.append(self.get_message(new_block.request))
+			messages.append(self.handle_message(message_block.request))
+			messages.append(self.handle_message(message_block.response))
+		messages.append(self.handle_message(new_block.request))
 		log.debug("Messages: %s", messages)
 		return messages
 

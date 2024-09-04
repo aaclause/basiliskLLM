@@ -31,10 +31,10 @@ class Provider(BaseModel):
 	api_type: ProviderAPIType
 	organization_mode_available: bool = Field(default=False)
 	require_api_key: bool = Field(default=True)
-	custom: bool = Field(default=True)
 	env_var_name_api_key: Optional[str] = Field(default=None)
 	env_var_name_organization_key: Optional[str] = Field(default=None)
 	engine_cls_path: str
+	custom: bool = Field(default=False)
 
 	@cached_property
 	def engine_cls(self) -> Type[BaseEngine]:
@@ -110,6 +110,16 @@ providers = [
 		require_api_key=True,
 		env_var_name_api_key="OPENROUTER_API_KEY",
 		engine_cls_path="basilisk.provider_engine.openrouter_engine.OpenRouterEngine",
+	),
+	Provider(
+		id="ollama",
+		name="Ollama",
+		base_url="http://127.0.0.1:11434/",
+		api_type=ProviderAPIType.OLLAMA,
+		organization_mode_available=False,
+		require_api_key=False,
+		engine_cls_path="basilisk.provider_engine.ollama_engine.OllamaEngine",
+		custom=True,
 	),
 ]
 

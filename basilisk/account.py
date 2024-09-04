@@ -45,7 +45,7 @@ class AccountOrganization(BaseModel):
 	model_config = ConfigDict(populate_by_name=True)
 	id: UUID4 = Field(default_factory=uuid4)
 	name: str
-	key_storage_method: KeyStorageMethodEnum = Field(
+	key_storage_method: Optional[KeyStorageMethodEnum] = Field(
 		default=KeyStorageMethodEnum.plain
 	)
 	key: SecretStr
@@ -127,6 +127,8 @@ class Account(BaseModel):
 		if isinstance(value, SecretStr):
 			return value
 		data = info.data
+		if data["api_key_storage_method"] is None:
+			return None
 		if data["api_key_storage_method"] == KeyStorageMethodEnum.plain:
 			if not isinstance(value, str):
 				raise ValueError("API key must be a string")

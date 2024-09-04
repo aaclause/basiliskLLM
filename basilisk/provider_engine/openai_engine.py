@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from functools import cached_property
-from typing import TYPE_CHECKING, Generator, Union
+from typing import TYPE_CHECKING, Any, Generator, Union
 
 from openai import OpenAI
 from openai.types.chat import ChatCompletion, ChatCompletionChunk
@@ -13,9 +13,10 @@ from basilisk.conversation import (
 	MessageBlock,
 	MessageRoleEnum,
 )
+from basilisk.image_file import ImageFile
 
 if TYPE_CHECKING:
-	from account import Account
+	from basilisk.account import Account
 from .base_engine import BaseEngine, ProviderAIModel, ProviderCapability
 
 log = logging.getLogger(__name__)
@@ -43,12 +44,12 @@ class OpenAIEngine(BaseEngine):
 			if self.account.active_organization_key
 			else None
 		)
+		log.debug("Initializing new OpenAI client")
 		return OpenAI(
 			api_key=self.account.api_key.get_secret_value(),
 			organization=organization_key,
 			base_url=str(self.account.provider.base_url),
 		)
-		log.debug("New openai client initialized")
 
 	@cached_property
 	def models(self) -> list[ProviderAIModel]:
@@ -215,6 +216,26 @@ class OpenAIEngine(BaseEngine):
 				max_temperature=2.0,
 			),
 		]
+
+	def handle_message(self, message: Message) -> dict[str, Any]:
+		if isinstance(message.content, list):
+			output = []
+			for part in message.content:
+				if isinstance(part, str):
+					output.append({"type": "text", "text": part})
+				elif isinstance(part, ImageFile):
+					output.append(
+						{
+							"type": "image_url",
+							"image_url": {"url": part.get_url()},
+						}
+					)
+				else:
+					raise ValueError(f"Unsupported message part: {part}")
+			return {"role": message.role.value, "content": output}
+		if isinstance(message.content, str):
+			return {"role": message.role.value, "content": message.content}
+		raise ValueError(f"Unsupported message content: {message.content}")
 
 	def completion(
 		self,

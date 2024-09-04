@@ -9,12 +9,11 @@ import google.generativeai as genai
 
 from basilisk.conversation import (
 	Conversation,
-	ImageUrlMessageContent,
 	Message,
 	MessageBlock,
 	MessageRoleEnum,
-	TextMessageContent,
 )
+from basilisk.image_file import ImageFile
 
 from .base_engine import BaseEngine, ProviderAIModel, ProviderCapability
 
@@ -135,8 +134,9 @@ class GeminiEngine(BaseEngine):
 			)
 
 	def convert_image(self, image: dict[str, str]) -> genai.protos.Part:
-		if image["url"].startswith("data:"):
-			image_media_type, image_data = image["url"].split(";", 1)
+		url = image.get_url()
+		if url.startswith("data:"):
+			image_media_type, image_data = url.split(";", 1)
 			image_media_type = image_media_type.split(":", 1)[1]
 			image_data = image_data.split(",", 1)[1]
 			return genai.protos.Part(
@@ -152,17 +152,16 @@ class GeminiEngine(BaseEngine):
 	) -> list[genai.protos.Part]:
 		parts = []
 		for content in message.content:
-			if isinstance(content, TextMessageContent):
-				parts.append(genai.protos.Part(text=content.text))
-			elif isinstance(content, ImageUrlMessageContent):
-				parts.append(self.convert_image(content.image_url))
+			if isinstance(content, ImageFile):
+				parts.append(self.convert_image(content))
 			elif isinstance(content, str):
 				parts.append(genai.protos.Part(text=content))
 			else:
-				raise NotImplementedError(
-					f"Content type {type(content)} not supported"
-				)
+				raise ValueError(f"Unsupported message part: {content}")
 		return parts
+
+	def handle_message(self, message: Message) -> Message:
+		pass
 
 	def get_messages(
 		self, new_block: MessageBlock, conversation: Conversation, **kwargs

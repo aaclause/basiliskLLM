@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import sys
 import threading
 import time
 import weakref
@@ -205,11 +206,14 @@ class ConversationTab(wx.Panel):
 			digits=2,
 			name="temperature",
 		)
-		float_spin_accessible = FloatSpinTextCtrlAccessible(
-			win=self.temperature_spinner._textctrl,
-			name=self.temperature_label.GetLabel().replace("&", ""),
-		)
-		self.temperature_spinner._textctrl.SetAccessible(float_spin_accessible)
+		if sys.platform == "win32":
+			float_spin_accessible = FloatSpinTextCtrlAccessible(
+				win=self.temperature_spinner._textctrl,
+				name=self.temperature_label.GetLabel().replace("&", ""),
+			)
+			self.temperature_spinner._textctrl.SetAccessible(
+				float_spin_accessible
+			)
 		sizer.Add(self.temperature_spinner, proportion=0, flag=wx.EXPAND)
 
 		self.top_p_label = wx.StaticText(
@@ -227,11 +231,12 @@ class ConversationTab(wx.Panel):
 			digits=2,
 			name="Top P",
 		)
-		float_spin_accessible = FloatSpinTextCtrlAccessible(
-			win=self.top_p_spinner._textctrl,
-			name=self.top_p_label.GetLabel().replace("&", ""),
-		)
-		self.top_p_spinner._textctrl.SetAccessible(float_spin_accessible)
+		if sys.platform == "win32":
+			float_spin_accessible = FloatSpinTextCtrlAccessible(
+				win=self.top_p_spinner._textctrl,
+				name=self.top_p_label.GetLabel().replace("&", ""),
+			)
+			self.top_p_spinner._textctrl.SetAccessible(float_spin_accessible)
 		sizer.Add(self.top_p_spinner, proportion=0, flag=wx.EXPAND)
 
 		self.stream_mode = wx.CheckBox(

@@ -34,7 +34,7 @@ from basilisk.sound_manager import play_sound, stop_sound
 
 from .base_conversation import BaseConversation
 from .html_view_window import show_html_view_window
-from .search_dialog import SearchDialog, SearchDirection
+from .search_dialog import SearchDialog, SearchDirection, adjust_utf16_position
 
 if TYPE_CHECKING:
 	from basilisk.provider_engine.base_engine import BaseEngine
@@ -600,6 +600,49 @@ class ConversationTab(wx.Panel, BaseConversation):
 		self.messages.Copy()
 		self.messages.SetInsertionPoint(cursor_pos)
 
+	def on_copy_current_code_block(self, event: wx.CommandEvent = None):
+		cursor_pos = self.messages.GetInsertionPoint()
+		self.message_segment_manager.absolute_position = cursor_pos
+		start = self.message_segment_manager.start
+		end = self.message_segment_manager.end
+		content = self.messages.GetRange(start, end)
+		code_blocks = re.finditer(
+			r"```(?:\S+)?\n(.*?)\n```", content, re.DOTALL
+		)
+		log.debug(code_blocks)
+		code_block = None
+		adjusted_cursor_pos = adjust_utf16_position(
+			content, cursor_pos, True
+		) - adjust_utf16_position(content, start, True)
+		log.debug(f"Adjusted Cursor position: {adjusted_cursor_pos}")
+		for block in code_blocks:
+			log.debug(f"Block: {block.start()} - {block.end()}")
+			if block.start() <= adjusted_cursor_pos <= block.end():
+				code_block = block.group(1)
+				log.debug(f"Code block: {code_block}")
+				break
+		if not code_block:
+			wx.Bell()
+			return
+		with wx.TheClipboard as clipboard:
+			clipboard.SetData(wx.TextDataObject(code_block))
+
+	def on_copy_message_code_blocks(self, event: wx.CommandEvent = None):
+		cursor_pos = self.messages.GetInsertionPoint()
+		self.message_segment_manager.absolute_position = cursor_pos
+		start = self.message_segment_manager.start
+		end = self.message_segment_manager.end
+		content = self.messages.GetRange(start, end)
+		code_blocks = re.finditer(
+			r"```(?:\S+)?\n(.*?)\n```", content, re.DOTALL
+		)
+		code_block = "\n".join(block.group(1) for block in code_blocks)
+		if not code_block:
+			wx.Bell()
+			return
+		with wx.TheClipboard as clipboard:
+			clipboard.SetData(wx.TextDataObject(code_block))
+
 	def on_remove_message_block(self, event: wx.CommandEvent = None):
 		cursor_pos = self.messages.GetInsertionPoint()
 		self.message_segment_manager.absolute_position = cursor_pos
@@ -626,6 +669,11 @@ class ConversationTab(wx.Panel, BaseConversation):
 			(wx.MOD_NONE, ord('S')): self.on_select_message,
 			(wx.MOD_NONE, ord('H')): self.on_show_as_html,
 			(wx.MOD_NONE, ord('C')): self.on_copy_message,
+			(wx.MOD_SHIFT, ord('C')): self.on_copy_current_code_block,
+			(
+				wx.MOD_CONTROL | wx.MOD_SHIFT,
+				ord('C'),
+			): self.on_copy_message_code_blocks,
 			(wx.MOD_NONE, ord('B')): self.move_to_start_of_message,
 			(wx.MOD_NONE, ord('N')): self.move_to_end_of_message,
 			(wx.MOD_SHIFT, wx.WXK_DELETE): self.on_remove_message_block,
@@ -693,6 +741,23 @@ class ConversationTab(wx.Panel, BaseConversation):
 			)
 			menu.Append(item)
 			self.Bind(wx.EVT_MENU, self.on_select_message, item)
+			item = wx.MenuItem(
+				menu,
+				wx.ID_ANY,
+				# Translators: This is a label for the Messages area context menu in the main window
+				_("Copy current code block") + " (Shift+C)",
+			)
+			menu.Append(item)
+			self.Bind(wx.EVT_MENU, self.on_copy_current_code_block, item)
+			item = wx.MenuItem(
+				menu,
+				wx.ID_ANY,
+				# Translators: This is a label for the Messages area context menu in the main window
+				_("Copy all code blocks in current message")
+				+ " (Ctrl+Shift+C)",
+			)
+			menu.Append(item)
+			self.Bind(wx.EVT_MENU, self.on_copy_message_code_blocks, item)
 			item = wx.MenuItem(
 				menu,
 				wx.ID_ANY,

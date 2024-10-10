@@ -90,7 +90,7 @@ class ConversationTab(wx.Panel, BaseConversation):
 		self._search_dialog = None
 		self.init_ui()
 		self.init_data(profile)
-		self.update_ui()
+		self.display_advanced_mode()
 
 	def init_ui(self):
 		sizer = wx.BoxSizer(wx.VERTICAL)
@@ -217,22 +217,6 @@ class ConversationTab(wx.Panel, BaseConversation):
 	def init_data(self, profile: Optional[config.ConversationProfile]):
 		self.refresh_images_list()
 		self.apply_profile(profile, True)
-
-	def update_ui(self):
-		controls = (
-			self.max_tokens_label,
-			self.max_tokens_spin_ctrl,
-			self.temperature_label,
-			self.temperature_spinner,
-			self.top_p_label,
-			self.top_p_spinner,
-			self.stream_mode,
-		)
-		advanced_mode = config.conf().general.advanced_mode
-		for control in controls:
-			control.Enable(advanced_mode)
-			control.Show(advanced_mode)
-		self.Layout()
 
 	def on_choose_profile(self, event: wx.KeyEvent):
 		main_frame: MainFrame = wx.GetTopLevelParent(self)
@@ -492,7 +476,7 @@ class ConversationTab(wx.Panel, BaseConversation):
 		self.refresh_accounts()
 		self.on_account_change(None)
 		self.on_model_change(None)
-		self.update_ui()
+		self.display_advanced_mode()
 
 	def add_standard_context_menu_items(
 		self, menu: wx.Menu, include_paste: bool = True

@@ -57,6 +57,10 @@ class ServerSettings(BaseModel):
 	enable: bool = Field(default=True)
 
 
+class NetworkSettings(BaseModel):
+	use_system_cert_store: bool = Field(default=True)
+
+
 class BasiliskConfig(BasiliskBaseSettings):
 	model_config = get_settings_config_dict(config_file_name)
 
@@ -66,6 +70,7 @@ class BasiliskConfig(BasiliskBaseSettings):
 	)
 	images: ImagesSettings = Field(default_factory=ImagesSettings)
 	recordings: RecordingsSettings = Field(default_factory=RecordingsSettings)
+	network: NetworkSettings = Field(default_factory=NetworkSettings)
 	server: ServerSettings = Field(default_factory=ServerSettings)
 
 	@model_validator(mode="before")

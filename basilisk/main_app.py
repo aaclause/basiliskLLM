@@ -3,6 +3,7 @@ import shutil
 import sys
 import threading
 
+import truststore
 import wx
 
 import basilisk.config as config
@@ -55,6 +56,7 @@ class MainApp(wx.App):
 		)
 		self.frame.Show(not global_vars.args.minimize)
 		self.SetTopWindow(self.frame)
+		self.init_system_cert_store()
 		self.file_watcher = init_file_watcher(self.bring_window_to_focus)
 		self.server = None
 		if self.conf.server.enable:
@@ -114,3 +116,24 @@ class MainApp(wx.App):
 
 		log.info("Application exited")
 		return 0
+
+	def init_system_cert_store(self):
+		if not self.conf.network.use_system_cert_store:
+			log.info("Use certifi certificate store")
+			return
+		try:
+			log.debug("Activating system certificate store")
+			truststore.inject_into_ssl()
+			log.info("System certificate store activated")
+		except Exception as e:
+			log.error(
+				f"Failed to activate system certificate store: {e}",
+				exc_info=True,
+			)
+			wx.MessageBox(
+				# Translators: Error message
+				_("Failed to activate system certificate store"),
+				# Translators: Error title
+				_("Error"),
+				style=wx.ICON_ERROR,
+			)

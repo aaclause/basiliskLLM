@@ -45,6 +45,7 @@ pillow = "^10.4.0"
 keyring = "^25.4.1"
 more-itertools = "^10.5.0"
 markdown2 = "^2.5.0"
+truststore = "^0.9.2"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.6.9"
@@ -102,14 +103,14 @@ includes = ["numpy", "httplib2.socks", "win32timezone"]
 packages = ["numpy", "google.generativeai", "basilisk.provider_engine", "keyring"]
 zip_include_packages = [
     "anyio", "annotated_types", "anthropic", "asyncio",
-    "cachetools", "certifi", "cffi", "charset_normalizer", "concurrent", "collections", "colorama", "ctypes", "curses",
+    "backports", "cachetools", "certifi", "cffi", "charset_normalizer", "concurrent", "collections", "colorama", "ctypes", "curses",
     "distro", "dotenv", "encodings", "email", "google", "googleapiclient", "grpc_status",
     "h11", "html", "httpcore", "http", "httplib2", "httpx",
-    "idna", "importlib", "importlib_metadata",
+    "idna", "importlib", "importlib_metadata", "importlib_resources",
     "jaraco", "jiter", "json", "keyring", "logging",
     "openai", "numpy", "more_itertools",
     "PIL", "platformdirs", "proto", "psutil", "pyasn1", "pyasn1_modules", "pycparser", "pyparsing", "pydantic", "pydantic_core", "pydantic_settings", "pywin32_system32",
-    "re", "rsa", "requests", "sniffio", "tarfile", "tokenizers", "tqdm", "uritemplate", "urllib", "urllib3",
+    "re", "rsa", "requests", "sniffio", "tarfile", "tokenizers", "tomli", "truststore", "tqdm", "uritemplate", "urllib", "urllib3",
     "watchdog", "win32api", "win32ctypes", "win32timezone",
     "xml", "yaml", "zipfile", "zipp", "zoneinfo",
     "basilisk"]
